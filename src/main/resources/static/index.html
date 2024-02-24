@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>ChatGPT</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        /* 样式 */
+
+        .container {
+            background-color: #f8f8f8;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            white-space: pre-wrap;
+        }
+
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .message {
+            padding: 10px;
+            border-radius: 10px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+
+        .user-message {
+            background-color: #9061e8;
+            align-self: flex-end;
+        }
+
+        .response-message {
+            background-color: #e0dbdb;
+            align-self: flex-start;
+        }
+
+        .input-container {
+            margin-top: 20px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+        }
+
+        /*.code-block {*/
+        /*    background-color: #f0f0f0;*/
+        /*    border: 1px solid #e1e4e8;*/
+        /*    padding: 16px;*/
+        /*    overflow: auto;*/
+        /*    font-family: SFMono-Regular,Consolas,Liberation Mono,Menlo,monospace;*/
+        /*    border-radius: 6px;*/
+        /*    margin: 8px 0;*/
+        /*}*/
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>ChatGPT by moose</h1>
+    <div class="chat-container" id="chatContainer">
+<!--        <div class="message user-message">-->
+<!--            <strong>User:</strong> 例：推荐一本书-->
+<!--        </div>-->
+<!--        <div class="message response-message">-->
+<!--            <strong>ChatGPT:</strong> 我推荐余华的《活着》......-->
+<!--        </div>-->
+    </div>
+    <div class="input-container">
+        <input type="text" id="userInput" placeholder="输入想问的内容，如：推荐一本书；红烧排骨怎么做；帮我制定杭州旅游计划(输入继续，让停顿的AI继续输出)" autofocus>
+    </div>
+</div>
+
+<script>
+    // 获取页面元素
+    var userInput = document.getElementById("userInput");
+    var chatContainer = document.getElementById("chatContainer");
+
+    // 按下回车键触发发送消息事件
+    userInput.addEventListener("keyup", function(event) {
+        if (event.key === "Enter") {
+            sendUserMessage();
+        }
+    });
+
+    // 发送用户消息到后端处理
+    function sendUserMessage() {
+        var userMessage = userInput.value;
+        if (userMessage.trim() !== "") {
+            // 构建POST请求，发送用户消息到后端
+            fetch('/streamChat', {
+                method: 'POST',
+                body: userMessage
+            }).then(function(response) {
+                const reader = response.body.getReader();
+                return new ReadableStream({
+                    start(controller) {
+                        function read() {
+                            return reader.read().then(({ done, value }) => {
+                                if (done) {
+                                    controller.close();
+                                    return;
+                                }
+                                // 在此处处理接收到的数据，可以更新页面展示
+                                // 示例代码中将接收到的数据直接添加到聊天容器中
+                                appendResponseMessage(new TextDecoder().decode(value));
+
+                                return read();
+                            });
+                        }
+
+                        return read();
+                    }
+                });
+
+            })
+                .catch(function(err) {
+                    console.error(err);
+                });
+
+            // 清空输入框
+            userInput.value = "";
+
+            // 更新页面展示
+            appendUserMessage(userMessage);
+
+            // 获取具有id属性的元素
+            const element = document.getElementById("response-message");
+
+            // 删除id属性
+            if (element!==null){
+                element.removeAttribute("id");
+            }
+
+        }
+    }
+
+    // 在聊天容器中追加用户消息
+    function appendUserMessage(message) {
+        var userMessageDiv = document.createElement("div");
+        userMessageDiv.classList.add("message", "user-message");
+        userMessageDiv.innerHTML = "<strong>User:</strong> " + message;
+        chatContainer.appendChild(userMessageDiv);
+    }
+
+
+
+    function appendResponseMessage(message) {
+        // 检查是否已有ChatGPT的回复消息存在
+        var responseMessageDiv = document.querySelector("#response-message");
+        if (responseMessageDiv) {
+            responseMessageDiv.innerHTML += message;
+        } else {
+            // 创建新的消息div并追加ChatGPT的回复消息
+            responseMessageDiv = document.createElement("div");
+            responseMessageDiv.classList.add("message", "response-message");
+            responseMessageDiv.id = "response-message";
+            responseMessageDiv.innerHTML = "ChatGPT: " + message;
+            chatContainer.appendChild(responseMessageDiv);
+        }
+    }
+
+
+</script>
+</body>
+</html>
