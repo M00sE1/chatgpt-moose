@@ -1,0 +1,2 @@
+本项目是一个基于springboot和chatgpt api写的html页面
+目前支持流式输出，按session支持聊天记忆功能
